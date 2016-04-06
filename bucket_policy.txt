@@ -1,0 +1,33 @@
+{
+	"Version": "2008-10-17",
+	"Id": "ZencoderBucketPolicy",
+	"Statement": [
+		{
+			"Sid": "Stmt1295042087538",
+			"Effect": "Allow",
+			"Principal": {
+				"AWS": "arn:aws:iam::395540211253:root"
+			},
+			"Action": [
+				"s3:GetObjectAcl",
+				"s3:GetObject",
+				"s3:PutObjectAcl",
+				"s3:ListMultipartUploadParts",
+				"s3:PutObject"
+			],
+			"Resource": "arn:aws:s3:::YOUR-BUCKET/*"
+		},
+		{
+			"Sid": "Stmt1295042087538",
+			"Effect": "Allow",
+			"Principal": {
+				"AWS": "arn:aws:iam::395540211253:root"
+			},
+			"Action": [
+				"s3:ListBucketMultipartUploads",
+				"s3:GetBucketLocation"
+			],
+			"Resource": "arn:aws:s3:::YOUR-BUCKET"
+		}
+	]
+}
