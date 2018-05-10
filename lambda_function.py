@@ -5,14 +5,49 @@ import urllib
 import urllib2
 import boto3
 import os
+import base64
 
 s3 = boto3.client('s3')
 
-API_URL = 'https://app.zencoder.com/api/v2/jobs'
-API_KEY = 'YOUR-ZENCODER-API-KEY'
+API_URL = 'https://api_demo.hybrik.com/v1'
 INPUT_FOLDER_NAME = 'inputs/'
-S3_OUTPUT_BASE_URL = 's3://YOUR-S3-BUCKET/outputs/'
-NOTIFICATION_EMAIL = 'YOUR-EMAIL-ADDRESS'
+S3_OUTPUT_BASE_URL = 's3://hybrik-demo-bucket/lambda_watchfolder_outputs/'
+
+# Decrypt credentials
+OAPI_KEY = boto3.client('kms').decrypt(CiphertextBlob=base64.b64decode(os.environ['oapi_key']))['Plaintext']
+OAPI_SECRET = boto3.client('kms').decrypt(CiphertextBlob=base64.b64decode(os.environ['oapi_secret']))['Plaintext']
+USERNAME = boto3.client('kms').decrypt(CiphertextBlob=base64.b64decode(os.environ['username']))['Plaintext']
+PASSWORD = boto3.client('kms').decrypt(CiphertextBlob=base64.b64decode(os.environ['password']))['Plaintext']
+
+def getHybrikAuthToken():
+    base64string = base64.encodestring('%s:%s' % (OAPI_KEY, OAPI_SECRET)).replace('\n', '')
+    headers = {
+        'X-Hybrik-Compliance': '20180501',
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic %s' % base64string
+    }
+
+    data = {
+        "auth_key": USERNAME,
+        "auth_secret": PASSWORD
+    }
+
+    try:        
+        # Send auth request
+        data = json.dumps(data)
+        request = urllib2.Request(API_URL + '/login', data, headers)
+        response = urllib2.urlopen(request)
+            
+        # Return token
+        payload = json.loads(response.read())
+        return payload['token']
+
+    except Exception as e:
+        print(e)
+        print('Error retrieving auth token.')
+        raise e
+
+
 
 def lambda_handler(event, context):
 
@@ -26,150 +61,90 @@ def lambda_handler(event, context):
     input_filename = input_key.replace(INPUT_FOLDER_NAME, '', 1)
     output_key = os.path.splitext(input_filename)[0]
 
-    # Headers for Zencoder request
+    auth_token = getHybrikAuthToken()
+    base64string = base64.encodestring('%s:%s' % (OAPI_KEY, OAPI_SECRET)).replace('\n', '')
+
+    # Headers for Job submission request
     headers = {
-        'Accept': 'application/json',
+        'X-Hybrik-Compliance': '20180501',
+        'X-Hybrik-Sapiauth': auth_token,
         'Content-Type': 'application/json',
-        'Zencoder-Api-Key': API_KEY
+        'Authorization': 'Basic %s' % base64string
     }
     
-    # Zencoder API request data
+    # Hybrik job data
     api_data = {
-        "input": "s3://" + input_bucket + "/" + input_key,
-        "notifications": NOTIFICATION_EMAIL,
-        "output": [
-            {
-                "audio_bitrate": 64,
-                "audio_sample_rate": 22050,
-                "base_url": S3_OUTPUT_BASE_URL,
-                "filename": output_key + "-64k.m3u8",
-                "format": "aac",
-                "public": 1,
-                "type": "segmented"
-            },
-            {
-                "audio_bitrate": 56,
-                "audio_sample_rate": 22050,
-                "base_url": S3_OUTPUT_BASE_URL,
-                "decoder_bitrate_cap": 360,
-                "decoder_buffer_size": 840,
-                "filename": output_key + "-240k.m3u8",
-                "max_frame_rate": 15,
-                "public": 1,
-                "type": "segmented",
-                "video_bitrate": 184,
-                "width": 400,
-                "format": "ts"
-            },
-            {
-                "audio_bitrate": 56,
-                "audio_sample_rate": 22050,
-                "base_url": S3_OUTPUT_BASE_URL,
-                "decoder_bitrate_cap": 578,
-                "decoder_buffer_size": 1344,
-                "filename": output_key + "-440k.m3u8",
-                "public": 1,
-                "type": "segmented",
-                "video_bitrate": 384,
-                "width": 400,
-                "format": "ts"
-            },
-            {
-                "audio_bitrate": 56,
-                "audio_sample_rate": 22050,
-                "base_url": S3_OUTPUT_BASE_URL,
-                "decoder_bitrate_cap": 960,
-                "decoder_buffer_size": 2240,
-                "filename": output_key + "-640k.m3u8",
-                "public": 1,
-                "type": "segmented",
-                "video_bitrate": 584,
-                "width": 480,
-                "format": "ts"
-            },
-            {
-                "audio_bitrate": 56,
-                "audio_sample_rate": 22050,
-                "base_url": S3_OUTPUT_BASE_URL,
-                "decoder_bitrate_cap": 1500,
-                "decoder_buffer_size": 4000,
-                "filename": output_key + "-1040k.m3u8",
-                "public": 1,
-                "type": "segmented",
-                "video_bitrate": 1000,
-                "width": 640,
-                "format": "ts"
-            },
-            {
-                "audio_bitrate": 56,
-                "audio_sample_rate": 22050,
-                "base_url": S3_OUTPUT_BASE_URL,
-                "decoder_bitrate_cap": 2310,
-                "decoder_buffer_size": 5390,
-                "filename": output_key + "-1540k.m3u8",
-                "public": 1,
-                "type": "segmented",
-                "video_bitrate": 1484,
-                "width": 960,
-                "format": "ts"
-            },
-            {
-                "audio_bitrate": 56,
-                "audio_sample_rate": 22050,
-                "base_url": S3_OUTPUT_BASE_URL,
-                "decoder_bitrate_cap": 3060,
-                "decoder_buffer_size": 7140,
-                "filename": output_key + "-2040k.m3u8",
-                "public": 1,
-                "type": "segmented",
-                "video_bitrate": 1984,
-                "width": 1024,
-                "format": "ts"
-            },
-            {
-                "base_url": S3_OUTPUT_BASE_URL,
-                "filename": "playlist.m3u8",
-                "public": 1,
-                "streams": [
-                    {
-                        "bandwidth": 2040,
-                        "path": output_key + "-2040k.m3u8"
-                    },
-                    {
-                        "bandwidth": 1540,
-                        "path": output_key + "-1540k.m3u8"
-                    },
-                    {
-                        "bandwidth": 1040,
-                        "path": output_key + "-1040k.m3u8"
-                    },
-                    {
-                        "bandwidth": 640,
-                        "path": output_key + "-640k.m3u8"
-                    },
-                    {
-                        "bandwidth": 440,
-                        "path": output_key + "-440k.m3u8"
-                    },
-                    {
-                        "bandwidth": 240,
-                        "path": output_key + "-240k.m3u8"
-                    },
-                    {
-                        "bandwidth": 64,
-                        "path": output_key + "-64k.m3u8"
-                    }
-                ],
-                "type": "playlist"
+      "definitions": {
+        "profile_name": "transmux_mov_to_mp4",
+        "category": "transmuxing",
+        "source": "s3://" + input_bucket + "/" + input_key,
+        "destination": S3_OUTPUT_BASE_URL
+      },
+      "name": "{{profile_name}}:  {{source}}",
+      "payload": {
+        "elements": [
+          {
+            "uid": "source_file",
+            "kind": "source",
+            "payload": {
+              "kind": "asset_url",
+              "payload": {
+                "storage_provider": "s3",
+                "url": "{{source}}"
+              }
             }
+          },
+          {
+            "uid": "transmux",
+            "kind": "transcode",
+            "payload": {
+              "location": {
+                "storage_provider": "s3",
+                "path": "{{destination}}"
+              },
+              "targets": [
+                {
+                  "file_pattern": "{{profile_name}}{default_extension}",
+                  "existing_files": "replace",
+                  "container": {
+                    "kind": "mp4"
+                  },
+                  "video": {
+                    "codec": "copy"
+                  },
+                  "audio": [
+                    {
+                      "codec": "copy"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "connections": [
+          {
+            "from": [
+              {
+                "element": "source_file"
+              }
+            ],
+            "to": {
+              "success": [
+                {
+                  "element": "transmux"
+                }
+              ]
+            }
+          }
         ]
+      }
     }
 
-
     try:        
-        # Send request to Zencoder API
+        # Send request to Hybrik API
         data = json.dumps(api_data)
-        request = urllib2.Request(API_URL, data, headers)
+        request = urllib2.Request(API_URL + '/jobs', data, headers)
         response = urllib2.urlopen(request)
         
         # Log the response
