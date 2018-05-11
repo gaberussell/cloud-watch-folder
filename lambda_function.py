@@ -10,7 +10,8 @@ import base64
 s3 = boto3.client('s3')
 
 API_URL = 'https://api_demo.hybrik.com/v1'
-INPUT_FOLDER_NAME = 'inputs/'
+COMPLIANCE_DATE = '20180501'
+INPUT_FOLDER_NAME = 'lambda-watchfolder-inputs/'
 S3_OUTPUT_BASE_URL = 's3://hybrik-demo-bucket/lambda_watchfolder_outputs/'
 
 # Decrypt credentials
@@ -22,7 +23,7 @@ PASSWORD = boto3.client('kms').decrypt(CiphertextBlob=base64.b64decode(os.enviro
 def getHybrikAuthToken():
     base64string = base64.encodestring('%s:%s' % (OAPI_KEY, OAPI_SECRET)).replace('\n', '')
     headers = {
-        'X-Hybrik-Compliance': '20180501',
+        'X-Hybrik-Compliance': COMPLIANCE_DATE,
         'Content-Type': 'application/json',
         'Authorization': 'Basic %s' % base64string
     }
@@ -57,14 +58,10 @@ def lambda_handler(event, context):
     # Get object key and convert pluses
     input_key = urllib.unquote_plus(event['Records'][0]['s3']['object']['key'])
     
-    # Strip input folder name and file extension from input key to create output key
-    input_filename = input_key.replace(INPUT_FOLDER_NAME, '', 1)
-    output_key = os.path.splitext(input_filename)[0]
-
     auth_token = getHybrikAuthToken()
     base64string = base64.encodestring('%s:%s' % (OAPI_KEY, OAPI_SECRET)).replace('\n', '')
 
-    # Headers for Job submission request
+    # Headers for job submission request
     headers = {
         'X-Hybrik-Compliance': '20180501',
         'X-Hybrik-Sapiauth': auth_token,
@@ -104,7 +101,7 @@ def lambda_handler(event, context):
               },
               "targets": [
                 {
-                  "file_pattern": "{{profile_name}}{default_extension}",
+                  "file_pattern":  "{source_basename}{default_extension}",
                   "existing_files": "replace",
                   "container": {
                     "kind": "mp4"
