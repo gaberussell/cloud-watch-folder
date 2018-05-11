@@ -10,6 +10,8 @@ This example shows how to create a cloud-based watch folder. When a new file is 
 5. Update the global vars at the top:
  * **INPUT_FOLDER_NAME** is the name of the input folder in your S3 bucket
  * **S3_OUTPUT_BASE_URL** includes the output bucket and folder
+ * **COMPLIANCE_DATE** Set to current date for testing purposes, and freeze when deploying in production to ensure API compliance as the Hybrik API evolves over time
+
 6. Optionally modify the [output settings](https://github.com/gaberussell/cloud-watch-folder/blob/hybrik/lambda_function.py#L75-L142) to output your preferred formats.
 7. Create a new event source for the Lambda function with a source type of **S3**, an event type of **Object Created (all)**, and the prefix will will match the above **INPUT_FOLDER_NAME**.
 8. Under **Environment Variables**, check "Enable helpers for encryption in transit." Select a KMS key, or create a new one. Be sure to enable the service role associated with the Lambda function under **Define Key Usage Permissions** within KMS.
