@@ -11,7 +11,6 @@ s3 = boto3.client('s3')
 
 API_URL = 'https://api_demo.hybrik.com/v1'
 COMPLIANCE_DATE = '20180501'
-INPUT_FOLDER_NAME = 'lambda-watchfolder-inputs/'
 S3_OUTPUT_BASE_URL = 's3://hybrik-demo-bucket/lambda_watchfolder_outputs/'
 
 # Decrypt credentials
